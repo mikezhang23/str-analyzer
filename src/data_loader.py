@@ -21,16 +21,16 @@ def load_listings():
     df['bedrooms'] = pd.to_numeric(df['bedrooms'], errors='coerce')
     df['accommodates'] = pd.to_numeric(df['accommodates'], errors='coerce')
     df['bedrooms_int'] = df['bedrooms'].round().astype('Int64')
-    df = add_location_cells(df)  # Adds location grid cells for spatial controls
-    df = add_revenue_features(df)  # Adds revenue-related columns
-    df = add_amenities_flags(df)  # Adds amenities flag columns
-    df = remove_outliers_iqr(df, ['price', 'revpar'])  # Remove extreme outliers
 
 # Filter out bad data
     df = df[df['price'] > 25] # Remove listings < $25 per night (likely not real)
     df = df[df['price'] < 2000] # Remove listings > $2000 per night (likely outliers)
     df = df[df['bedrooms'].notna()] # Remove listings with no bedroom info
     df = df[df['bedrooms'] <= 10] # Focused on typical STRs, remove listings with >10 bedrooms
+    df = add_location_cells(df)  # Adds location grid cells for spatial controls
+    df = add_revenue_features(df)  # Adds revenue-related columns
+    df = add_amenities_flags(df)  # Adds amenities flag columns
+    df = remove_outliers_iqr(df, ['price', 'revpar'])  # Remove extreme outliers after feature creation
     return df  # Return cleaned DataFrame
 
 def add_revenue_features(df):
