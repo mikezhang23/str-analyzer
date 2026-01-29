@@ -18,6 +18,10 @@ def load_listings():
     filepath = "data/listings.csv"  # Path to our data file
     df = pd.read_csv(filepath)  # Read CSV into a DataFrame (like a spreadsheet)
     df['price'] = df['price'].apply(parse_price)  # Apply our function to every price
+    df['bedrooms'] = pd.to_numeric(df['bedrooms'], errors='coerce')
+    df['accommodates'] = pd.to_numeric(df['accommodates'], errors='coerce')
+    df['bedrooms_int'] = df['bedrooms'].round().astype('Int64')
+    df = add_location_cells(df)  # Adds location grid cells for spatial controls
     df = add_revenue_features(df)  # Adds revenue-related columns
     df = add_amenities_flags(df)  # Adds amenities flag columns
 
@@ -32,6 +36,19 @@ def add_revenue_features(df):
     df['estimated_occupancy_rate'] = (df['reviews_per_month'].fillna(0) * 2 * 3) / 30 # estimates occupancy by multiplying reviews by 3 days (avg stay est). and by 2 bc roughly 50% of guests leave reviews; fillna fills na with 0.
     df['revpar'] = df['price'] * df['estimated_occupancy_rate'].clip(0,0.95)  # revenue per available room, capped at 95% occupancy
     df['estimated_annual_revenue'] = df['revpar'] * 365
+    return df
+
+def add_location_cells(df, cell_size=0.02):
+    """Create a grid-based location cell from latitude/longitude for spatial controls."""
+    if 'latitude' not in df.columns or 'longitude' not in df.columns:
+        return df
+    df = df.copy()
+    lat = pd.to_numeric(df['latitude'], errors='coerce')
+    lon = pd.to_numeric(df['longitude'], errors='coerce')
+    lat_bin = (lat / cell_size).round(0).astype('Int64')
+    lon_bin = (lon / cell_size).round(0).astype('Int64')
+    df['location_cell'] = lat_bin.astype(str) + "_" + lon_bin.astype(str)
+    df.loc[lat.isna() | lon.isna(), 'location_cell'] = pd.NA
     return df
 
 def parse_amenities(amenities_str):
