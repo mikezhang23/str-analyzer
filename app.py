@@ -117,18 +117,28 @@ if 'neighbourhood_cleansed' in df.columns:
 # Causal Analysis
 st.subheader("Causal Analysis: Pool Impact")
 
-results = analyze_amenity_impact(df, 'has_pool')
+results = analyze_amenity_impact(
+    df,
+    'has_pool',
+    exact_match_cols=['bedrooms_int'],
+)
 
 st.write(f"**Naive difference:** ${results['naive_difference']:.2f}")
 st.write(f"**Causal effect (after matching):** ${results['causal_effect']:.2f}")
+st.write(f"**Causal effect (IPW):** ${results['ipw_effect']:.2f}")
 st.write(f"**Matched pairs:** {results['n_matched_pairs']}")
 
 st.subheader("Causal Analysis: Hot Tub Impact")
 
-results_hottub = analyze_amenity_impact(df, 'has_hot_tub')
+results_hottub = analyze_amenity_impact(
+    df,
+    'has_hot_tub',
+    exact_match_cols=['bedrooms_int'],
+)
 
 st.write(f"**Naive difference:** ${results_hottub['naive_difference']:.2f}")
 st.write(f"**Causal effect (after matching):** ${results_hottub['causal_effect']:.2f}")
+st.write(f"**Causal effect (IPW):** ${results_hottub['ipw_effect']:.2f}")
 st.write(f"**Matched pairs:** {results_hottub['n_matched_pairs']}")
 
 st.subheader("Causal Impact: All Amenities")
@@ -138,11 +148,16 @@ amenities_to_test = ['has_pool', 'has_hot_tub', 'has_gym', 'has_kitchen', 'has_w
 results_list = []
 for amenity in amenities_to_test:
     try:
-        result = analyze_amenity_impact(df, amenity)
+        result = analyze_amenity_impact(
+            df,
+            amenity,
+            exact_match_cols=['bedrooms_int'],
+        )
         results_list.append({
             'Amenity': amenity.replace('has_', '').replace('_', ' ').title(),
             'Naive Diff ($)': round(result['naive_difference'], 2),
             'Causal Effect ($)': round(result['causal_effect'], 2),
+            'IPW Effect ($)': round(result['ipw_effect'], 2),
             'Matched Pairs': result['n_matched_pairs']
         })
     except Exception as e:

@@ -18,8 +18,13 @@ def load_listings():
     filepath = "data/listings.csv"  # Path to our data file
     df = pd.read_csv(filepath)  # Read CSV into a DataFrame (like a spreadsheet)
     df['price'] = df['price'].apply(parse_price)  # Apply our function to every price
+    df['bedrooms'] = pd.to_numeric(df['bedrooms'], errors='coerce')
+    df['accommodates'] = pd.to_numeric(df['accommodates'], errors='coerce')
+    df['bedrooms_int'] = df['bedrooms'].round().astype('Int64')
+    df = add_location_cells(df)  # Adds location grid cells for spatial controls
     df = add_revenue_features(df)  # Adds revenue-related columns
     df = add_amenities_flags(df)  # Adds amenities flag columns
+    df = remove_outliers_iqr(df, ['price', 'revpar'])  # Remove extreme outliers
 
 # Filter out bad data
     df = df[df['price'] > 25] # Remove listings < $25 per night (likely not real)
@@ -32,6 +37,39 @@ def add_revenue_features(df):
     df['estimated_occupancy_rate'] = (df['reviews_per_month'].fillna(0) * 2 * 3) / 30 # estimates occupancy by multiplying reviews by 3 days (avg stay est). and by 2 bc roughly 50% of guests leave reviews; fillna fills na with 0.
     df['revpar'] = df['price'] * df['estimated_occupancy_rate'].clip(0,0.95)  # revenue per available room, capped at 95% occupancy
     df['estimated_annual_revenue'] = df['revpar'] * 365
+    return df
+
+def add_location_cells(df, cell_size=0.02):
+    """Create a grid-based location cell from latitude/longitude for spatial controls."""
+    if 'latitude' not in df.columns or 'longitude' not in df.columns:
+        return df
+    df = df.copy()
+    lat = pd.to_numeric(df['latitude'], errors='coerce')
+    lon = pd.to_numeric(df['longitude'], errors='coerce')
+    lat_bin = (lat / cell_size).round(0).astype('Int64')
+    lon_bin = (lon / cell_size).round(0).astype('Int64')
+    df['location_cell'] = lat_bin.astype(str) + "_" + lon_bin.astype(str)
+    df.loc[lat.isna() | lon.isna(), 'location_cell'] = pd.NA
+    return df
+
+def remove_outliers_iqr(df, columns, k=1.5, min_rows=50):
+    """Remove outliers using the IQR rule for the specified columns."""
+    df = df.copy()
+    for col in columns:
+        if col not in df.columns:
+            continue
+        series = pd.to_numeric(df[col], errors='coerce')
+        valid = series.dropna()
+        if len(valid) < min_rows:
+            continue
+        q1 = valid.quantile(0.25)
+        q3 = valid.quantile(0.75)
+        iqr = q3 - q1
+        if iqr == 0:
+            continue
+        lower = q1 - k * iqr
+        upper = q3 + k * iqr
+        df = df[(series >= lower) & (series <= upper)]
     return df
 
 def parse_amenities(amenities_str):
